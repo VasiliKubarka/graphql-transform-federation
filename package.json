@@ -30,6 +30,9 @@
     "url": "git+https://github.com/0xR/graphql-transform-federation.git"
   },
   "license": "ISC",
+  "dependencies": {
+    "graphql-tools": "^4.0.6"
+  },
   "devDependencies": {
     "@apollo/federation": "^0.12.0",
     "@apollo/gateway": "^0.12.0",
@@ -40,7 +43,6 @@
     "apollo-server": "^2.10.0",
     "dedent": "^0.7.0",
     "graphql": "^14.6.0",
-    "graphql-tools": "^4.0.6",
     "jest": "^25.1.0",
     "nodemon": "^2.0.2",
     "prettier": "^1.19.1",
