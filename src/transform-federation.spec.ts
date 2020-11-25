@@ -1,4 +1,4 @@
-import { makeExecutableSchema, transformSchema } from 'graphql-tools';
+import { makeExecutableSchema, delegateToSchema } from 'graphql-tools';
 import { transformSchemaFederation } from './transform-federation';
 import { execute } from 'graphql/execution/execute';
 import { DirectiveNode, parse, print, visit } from 'graphql/language';
@@ -118,3 +118,83 @@ describe('Transform Federation', () => {
     );
   });
 });
+
+
+describe('Transform Federation stress', () => {
+  it('should resolve references', async () => {
+    const executableSchema = makeExecutableSchema({
+      typeDefs: `
+    type Product {
+      id: ID!
+      name: String!
+    }
+
+    type Query {
+      productById(id: String!): Product!
+    }
+      `,
+      resolvers: {
+        Query: {
+          productById(source, { id }) {
+            return { id: '1', name: 'product1' };
+          },
+        },
+      },
+    });
+
+    const federationSchema = transformSchemaFederation(executableSchema, {
+      Product: {
+        keyFields: ['id'],
+        extend: true,
+        resolveReference: async (
+          reference: any,
+          context: { [key: string]: any },
+          info,
+        ) => {
+          const res = await delegateToSchema({
+            schema: info.schema,
+            operation: 'query',
+            fieldName: 'productById',
+            args: {
+              id: reference.id,
+            },
+            context,
+            info,
+          });
+          return res;
+        },
+      },
+    });
+
+    const result = await execute({
+      schema: federationSchema,
+      document: parse(`
+          query{
+            _entities (representations: {
+              __typename:"Product"
+              id: "1"
+            }) {
+              __typename
+              ...on Product {
+                id
+                name
+              }
+            }
+          } 
+        `),
+    });
+
+    expect(result).toEqual({
+      data: {
+        _entities: [
+          {
+            __typename: 'Product',
+            id: '1',
+            name: 'product1',
+          },
+        ],
+      },
+    });
+  });
+});
+
